@@ -12,30 +12,83 @@ const $messages=document.querySelector('#messages')
 
 const $messagetemplate=document.querySelector('#messagetemplate').innerHTML
 const $locationmessagetemplate=document.querySelector('#locationmessagetemplate').innerHTML
+const $sidebartemplate=document.querySelector('#sidebar-template').innerHTML
+//options
+
+const {username,room}=Qs.parse(location.search,{ignoreQueryPrefix: true})
+
+
+const autoscroll=()=>{
+
+    //new msg elements
+
+    const $newMessage = $messages.lastElementChild
+
+    //height of the message
+
+    const newMessageStyles = getComputedStyle($newMessage)
+    const newMessageMergin = parseInt(newMessageStyles.merginButtom)
+    const newMessageHeight = $newMessage.offsetHeight + newMessageMergin
+
+    //visible height
+
+    const visibleHeight = $messages.offsetHeight
+
+    //height of messages container
+
+    const containerHeight = $messages.scrollHeight
+
+    //how far have I scroll?
+
+    const scrollOffset = $messages.scrollTop + visibleHeight
+
+    if(containerHeight - newMessageHeight <= scrollOffset){
+        $messages.scrollTop = $messages.scrollHeight
+    }
+
+
+    //console.log(newMessageStyles)
+    //console.log(newMessageMergin)
+
+}
 
 
 socket.on('message',(message)=>{
     console.log(message)
 
     const html=Mustache.render($messagetemplate,{
-        message:message
+        username:message.username,
+        message:message.text,
+        createdAt:moment(message.createdAt).format('h:mm a')
     })
 
     $messages.insertAdjacentHTML('beforeend',html)
+
+    autoscroll()
 })
 
 
-socket.on('locationmessage',(url)=>{
-    console.log(url)
+socket.on('locationmessage',(message)=>{
+    console.log(message)
 
     const html=Mustache.render($locationmessagetemplate,{
-        url:url
+        username:message.username,
+        url:message.text,
+        createdAt:moment(message.createdAt).format('h:mm a')
     })
 
     $messages.insertAdjacentHTML('beforeend',html)
+
+    autoscroll()
 })
 
-
+socket.on('roomData',({room,users})=>{
+    const html=Mustache.render($sidebartemplate,{
+        room,
+        users
+    })
+    document.querySelector('#sidebar').innerHTML=html
+})
 
 
 $messageform.addEventListener('submit',(e)=>{
@@ -74,4 +127,12 @@ $locationbutton.addEventListener('click',()=>{
             console.log("location shared")
         })
     })
+})
+
+
+socket.emit('join',{username,room},(error)=>{
+    if(error){
+        alert(error)
+        location.href='/'
+    }
 })
